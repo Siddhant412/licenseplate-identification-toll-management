@@ -2,6 +2,7 @@ import os
 # comment out below line to enable tensorflow logging outputs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import time
+from datetime import date
 import tensorflow as tf
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
@@ -61,6 +62,33 @@ fvideo = './data/video/demo1.mp4'
 # path of output video location
 foutput = './outputs/demotrack4.avi'
 
+# path of cropped LP saving directory
+lp_saving_dir = './egLocationID/' 
+
+
+def save_LP_captures(cropped_lp, original_vehicle, current_tracking_id, lp_saving_dir='./egLocationID/'):
+    today = date.today()
+    d1 = today.strftime("%d%m%Y")
+
+    if not os.path.isdir(lp_saving_dir):
+        os.mkdir(lp_saving_dir)
+
+    date_dir = os.path.join(lp_saving_dir, d1)
+    if not os.path.isdir(date_dir):
+        os.mkdir(date_dir)
+    
+    vehicle_id_dir = os.path.join(date_dir, str(current_tracking_id))
+    os.mkdir(vehicle_id_dir)
+
+    lp_path = os.path.join(vehicle_id_dir, str(current_tracking_id)+"_crop.jpg")
+    vehicle_path = os.path.join(vehicle_id_dir, str(current_tracking_id)+"_original.jpg")
+
+    try:
+        cv2.imwrite(lp_path, cropped_lp)
+        cv2.imwrite(vehicle_path, original_vehicle)
+    finally:
+        return
+
 
 def main(_argv):
     # Definition of the parameters
@@ -115,6 +143,9 @@ def main(_argv):
         out = cv2.VideoWriter(foutput, codec, fps, (width, height))
 
     frame_num = 0
+
+    tracking_id_set = set()
+
     # while video is running
     while True:
         return_value, frame = vid.read()
@@ -224,6 +255,8 @@ def main(_argv):
         tracker.predict()
         tracker.update(detections)
 
+        current_tracking_id = -1
+
         # update tracks
         for track in tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
@@ -231,28 +264,47 @@ def main(_argv):
             bbox = track.to_tlbr()
             class_name = track.get_class()
             
-        # draw bbox on screen
+            # draw bbox on screen
             color = colors[int(track.track_id) % len(colors)]
             color = [i * 255 for i in color]
 
+            lpX1 = int(bbox[0])
+            lpY1 = int(bbox[1])
+            lpX2 = int(bbox[2])
+            lpY2 = int(bbox[3])
 
-            lpcentX = int(bbox[2]) - (int(bbox[2]) - int(bbox[0])) / 2
-            lpcentY = int(bbox[3]) - (int(bbox[3]) - int(bbox[1])) / 2
+            lpcentX = int(lpX2 - (lpX2 - lpX1) / 2)
+            lpcentY = int(lpY2 - (lpY2 - lpY1) / 2)
 
-            cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
+            # logic to save lp, vehicle imgs
+            if lpcentY > 780 and lpcentY < 790:
+                current_tracking_id = track.track_id
+                # cv2.putText(frame, str(current_tracking_id), (lpcentX, lpcentY), 0, 0.75, (255,255,255), 2)
 
-            cv2.rectangle(frame, (int(lpcentX-280), int(lpcentY-380)), (int(lpcentX+280), int(lpcentY+100)), color, 2)
+                if current_tracking_id not in tracking_id_set:
+                    tracking_id_set.add(current_tracking_id)
+                    cropped_lp = frame[lpY1 : lpY2, lpX1 : lpX2]
+                    original_vehicle = frame[lpcentY-420 : lpcentY+100, lpcentX-280 : lpcentX+280]
 
-            cv2.putText(frame, str(lpcentY), (int(lpcentX), int(lpcentY)), 0, 0.75, (255,255,255), 2)
+                    save_LP_captures(cropped_lp, original_vehicle, current_tracking_id, lp_saving_dir)
 
 
+            # for LP
+            cv2.rectangle(frame, (lpX1, lpY1), (lpX2, lpY2), color, 2)
 
-            cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*17, int(bbox[1])), color, -1)
-            cv2.putText(frame, class_name + "-" + str(track.track_id),(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255),2)
+            # for vehicle 
+            cv2.rectangle(frame, (lpcentX-280, lpcentY-420), (lpcentX+280, lpcentY+100), color, 2)
 
-        # if enable info flag then print details about each track
+            # to find the vertical distances of LP centroid
+            # cv2.putText(frame, str(lpcentY), (lpcentX, lpcentY), 0, 0.75, (255,255,255), 2)
+
+            cv2.rectangle(frame, (lpX1, lpY1-30), (lpX1 + (len(class_name) + len(str(track.track_id))) * 17, lpY1), color, -1)
+            cv2.putText(frame, class_name + "-" + str(track.track_id),(lpX1, lpY1-10),0, 0.75, (255,255,255),2)
+
+
+            # if enable info flag then print details about each track
             if finfo:
-                print("Tracker ID: {}, Class: {},  BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id), class_name, (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))))
+                print("Tracker ID: {}, Class: {},  BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id), class_name, (lpX1, lpY1, lpX2, lpY2) ))
 
         # calculate frames per second of running detections
         fps = 1.0 / (time.time() - start_time)
