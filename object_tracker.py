@@ -26,21 +26,6 @@ from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
 
 
-# flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
-# flags.DEFINE_string('weights', './checkpoints/yolov4-416',
-#                     'path to weights file')
-# flags.DEFINE_integer('size', 416, 'resize images to')
-# flags.DEFINE_boolean('tiny', False, 'yolo or yolo-tiny')
-# flags.DEFINE_string('model', 'yolov4', 'yolov3 or yolov4')
-# flags.DEFINE_string('video', './data/video/test.mp4', 'path to input video or set to 0 for webcam')
-# flags.DEFINE_string('output', None, 'path to output video')
-# flags.DEFINE_string('output_format', 'XVID', 'codec used in VideoWriter when saving video to file')
-# flags.DEFINE_float('iou', 0.45, 'iou threshold')
-# flags.DEFINE_float('score', 0.50, 'score threshold')
-# flags.DEFINE_boolean('dont_show', False, 'dont show video output')
-# flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
-# flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
-
 # Flags
 fframework = 'tf'
 fsize = 416
@@ -288,7 +273,6 @@ def main(_argv):
 
                     save_LP_captures(cropped_lp, original_vehicle, current_tracking_id, lp_saving_dir)
 
-
             # for LP
             cv2.rectangle(frame, (lpX1, lpY1), (lpX2, lpY2), color, 2)
 
@@ -300,7 +284,6 @@ def main(_argv):
 
             cv2.rectangle(frame, (lpX1, lpY1-30), (lpX1 + (len(class_name) + len(str(track.track_id))) * 17, lpY1), color, -1)
             cv2.putText(frame, class_name + "-" + str(track.track_id),(lpX1, lpY1-10),0, 0.75, (255,255,255),2)
-
 
             # if enable info flag then print details about each track
             if finfo:
