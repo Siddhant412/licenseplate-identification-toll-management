@@ -24,6 +24,8 @@ from deep_sort import preprocessing, nn_matching
 from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
+from dotenv import load_dotenv
+from pathlib import Path
 
 
 # Flags
@@ -48,15 +50,22 @@ fvideo = './data/video/demo1.mp4'
 foutput = './outputs/demotrack4.avi'
 
 # path of cropped LP saving directory
-lp_saving_dir = './egLocationID/' 
+# lp_saving_dir = './egLocationID/' 
+load_dotenv()
+lp_saving_dir = os.getenv('LOCATION_ID')
+
 
 
 def save_LP_captures(cropped_lp, original_vehicle, current_tracking_id, lp_saving_dir='./egLocationID/'):
+
+    context ={}
+
     today = date.today()
     d1 = today.strftime("%d%m%Y")
 
     if not os.path.isdir(lp_saving_dir):
         os.mkdir(lp_saving_dir)
+    context['location_id'] = lp_saving_dir
 
     date_dir = os.path.join(lp_saving_dir, d1)
     if not os.path.isdir(date_dir):
@@ -65,14 +74,22 @@ def save_LP_captures(cropped_lp, original_vehicle, current_tracking_id, lp_savin
     vehicle_id_dir = os.path.join(date_dir, str(current_tracking_id))
     os.mkdir(vehicle_id_dir)
 
+    context['vehicle_id'] = vehicle_id_dir
+
     lp_path = os.path.join(vehicle_id_dir, str(current_tracking_id)+"_crop.jpg")
     vehicle_path = os.path.join(vehicle_id_dir, str(current_tracking_id)+"_original.jpg")
+
+    
+    context['status'] = 'detected'
 
     try:
         cv2.imwrite(lp_path, cropped_lp)
         cv2.imwrite(vehicle_path, original_vehicle)
+
+        context['crop_location'] = os.path.join(vehicle_id_dir,"crop")
+        context['image_location'] = os.path.join(vehicle_id_dir,"manual_images")
     finally:
-        return
+        return context
 
 
 def main(_argv):
@@ -271,7 +288,9 @@ def main(_argv):
                     cropped_lp = frame[lpY1 : lpY2, lpX1 : lpX2]
                     original_vehicle = frame[lpcentY-420 : lpcentY+100, lpcentX-280 : lpcentX+280]
 
-                    save_LP_captures(cropped_lp, original_vehicle, current_tracking_id, lp_saving_dir)
+                    context = save_LP_captures(cropped_lp, original_vehicle, current_tracking_id, lp_saving_dir)
+                    print("======JSON======")
+                    print(context)
 
             # for LP
             cv2.rectangle(frame, (lpX1, lpY1), (lpX2, lpY2), color, 2)
@@ -303,6 +322,12 @@ def main(_argv):
             out.write(result)
         if cv2.waitKey(1) & 0xFF == ord('q'): break
     cv2.destroyAllWindows()
+
+    # dotenv_path = Path('D:\github\LP_Capture_Tracking\core\.env')
+    # load_dotenv(dotenv_path=dotenv_path)
+    # load_dotenv()
+    # LOCATION_ID = os.getenv('LOCATION_ID')
+    # print("Environment variable:", LOCATION_ID)
 
 if __name__ == '__main__':
     try:
