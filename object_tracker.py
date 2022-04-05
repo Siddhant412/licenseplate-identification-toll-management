@@ -53,10 +53,10 @@ foutput = './outputs/demotrack4.avi'
 # lp_saving_dir = './egLocationID/' 
 load_dotenv()
 lp_saving_dir = os.getenv('LOCATION_ID')
+print("LOC ID: ", lp_saving_dir)
 
 
-
-def save_LP_captures(cropped_lp, original_vehicle, current_tracking_id, lp_saving_dir='./egLocationID/'):
+def save_LP_captures(cropped_lp, original_vehicle, current_tracking_id, lp_saving_dir='./egLocationID/', vehicle_image_count=1):
 
     context ={}
 
@@ -72,22 +72,34 @@ def save_LP_captures(cropped_lp, original_vehicle, current_tracking_id, lp_savin
         os.mkdir(date_dir)
     
     vehicle_id_dir = os.path.join(date_dir, str(current_tracking_id))
-    os.mkdir(vehicle_id_dir)
+    if not os.path.isdir(vehicle_id_dir):
+        os.mkdir(vehicle_id_dir)
 
-    context['vehicle_id'] = vehicle_id_dir
+    context['vehicle_id'] = current_tracking_id
 
-    lp_path = os.path.join(vehicle_id_dir, str(current_tracking_id)+"_crop.jpg")
-    vehicle_path = os.path.join(vehicle_id_dir, str(current_tracking_id)+"_original.jpg")
+    # lp_path = os.path.join(vehicle_id_dir, str(current_tracking_id)+"_crop.jpg")
+    # vehicle_path = os.path.join(vehicle_id_dir, str(current_tracking_id)+"_original.jpg")
 
+    lp_dir_path = os.path.join(vehicle_id_dir, 'cropped_image')
+    if not os.path.isdir(lp_dir_path):
+        os.mkdir(lp_dir_path)
+
+    vehicle_dir_path = os.path.join(vehicle_id_dir, 'manual_images')
+    if not os.path.isdir(vehicle_dir_path):
+        os.mkdir(vehicle_dir_path)
+
+    lp_path = os.path.join(lp_dir_path, str(current_tracking_id)+"_crop.jpg")
+    vehicle_path = os.path.join(vehicle_dir_path, str(current_tracking_id) + str(vehicle_image_count) + "_original.jpg")
     
     context['status'] = 'detected'
 
     try:
-        cv2.imwrite(lp_path, cropped_lp)
+        if cropped_lp is not None:
+            cv2.imwrite(lp_path, cropped_lp)
         cv2.imwrite(vehicle_path, original_vehicle)
 
         context['crop_location'] = os.path.join(vehicle_id_dir,"crop")
-        context['image_location'] = os.path.join(vehicle_id_dir,"manual_images")
+        context['manual_image_location'] = os.path.join(vehicle_id_dir,"manual_images")
     finally:
         return context
 
@@ -147,6 +159,8 @@ def main(_argv):
     frame_num = 0
 
     tracking_id_set = set()
+    vehicle_image_count = 0
+    prev_tracking_id = -1
 
     # while video is running
     while True:
@@ -157,7 +171,8 @@ def main(_argv):
         else:
             print('Video has ended or failed')
             break
-        frame_num +=1
+        frame_num += 1
+        vehicle_image_count += 1
         print('Frame #: ', frame_num)
         frame_size = frame.shape[:2]
         image_data = cv2.resize(frame, (input_size, input_size))
@@ -281,16 +296,22 @@ def main(_argv):
             # logic to save lp, vehicle imgs
             if lpcentY > 780 and lpcentY < 790:
                 current_tracking_id = track.track_id
+                if prev_tracking_id is not current_tracking_id:
+                    vehicle_image_count = 1
+                prev_tracking_id = current_tracking_id
                 # cv2.putText(frame, str(current_tracking_id), (lpcentX, lpcentY), 0, 0.75, (255,255,255), 2)
+                original_vehicle = frame[lpcentY-420 : lpcentY+100, lpcentX-280 : lpcentX+280]
+
+                cropped_lp = None
 
                 if current_tracking_id not in tracking_id_set:
                     tracking_id_set.add(current_tracking_id)
                     cropped_lp = frame[lpY1 : lpY2, lpX1 : lpX2]
-                    original_vehicle = frame[lpcentY-420 : lpcentY+100, lpcentX-280 : lpcentX+280]
+                    # original_vehicle = frame[lpcentY-420 : lpcentY+100, lpcentX-280 : lpcentX+280]
 
-                    context = save_LP_captures(cropped_lp, original_vehicle, current_tracking_id, lp_saving_dir)
-                    print("======JSON======")
-                    print(context)
+                context = save_LP_captures(cropped_lp, original_vehicle, current_tracking_id, lp_saving_dir, vehicle_image_count)
+                print("======JSON======")
+                print(context)
 
             # for LP
             cv2.rectangle(frame, (lpX1, lpY1), (lpX2, lpY2), color, 2)
