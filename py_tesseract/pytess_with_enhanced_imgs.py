@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from dotenv import load_dotenv
 from datetime import date
-import glob
+import json
 
 load_dotenv()
 loc_id = os.getenv('LOCATION_ID')
@@ -17,7 +17,7 @@ d1 = today.strftime("%d%m%Y")
 # If you don't have tesseract executable in your PATH, include the following:
 # pytesseract.pytesseract.tesseract_cmd = r'<full_path_to_your_tesseract_executable>'
 # Example tesseract_cmd = r'C:\Program Files (x86)\Tesseract-OCR\tesseract'
-pytesseract.pytesseract.tesseract_cmd = r'C:/Program Files/Tesseract-OCR/tesseract'
+pytesseract.pytesseract.tesseract_cmd = r'D:\github\py_tess\exe\Tesseract-OCR\tesseract.exe'
 
 # def extract_text(dir_path):
 
@@ -83,8 +83,8 @@ def get_lpno(root_dir):
                 gray = cv2.medianBlur(gray, 1)
                 # perform otsu thresh (using binary inverse since opencv contours work better with white text)
                 ret, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
-                cv2.imshow("Otsu", thresh)
-                cv2.waitKey(0)
+                # cv2.imshow("Otsu", thresh)
+                # cv2.waitKey(0)
                 rect_kern = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
 
                 # apply dilation 
@@ -134,8 +134,15 @@ def get_lpno(root_dir):
                 lpno_ocr_dict[vehicle_id] = plate_num.split('\n')[0]
                 return lpno_ocr_dict
 
+lpnos = get_lpno(root_dir)
+print("LP NOs: ",lpnos)
 
-print("LP NOs: ",get_lpno(root_dir))
+json_object = json.dumps(lpnos, indent = 4)
+  
+# Writing to sample.json
+with open("lp_data.json", "w") as outfile:
+    outfile.write(json_object)
+
 # print('Text: ',plate_num)
 
 # cv2.imshow("Character's Segmented", im2)
