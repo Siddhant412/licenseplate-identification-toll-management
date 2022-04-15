@@ -320,7 +320,7 @@ def main(_argv):
             cv2.rectangle(frame, (lpcentX-280, lpcentY-420), (lpcentX+280, lpcentY+100), color, 2)
 
             # to find the vertical distances of LP centroid
-            cv2.putText(frame, str(lpcentY), (lpcentX, lpcentY), 0, 0.75, (255,255,255), 2)
+            # cv2.putText(frame, str(lpcentY), (lpcentX, lpcentY), 0, 0.75, (255,255,255), 2)
 
             cv2.rectangle(frame, (lpX1, lpY1-30), (lpX1 + (len(class_name) + len(str(track.track_id))) * 17, lpY1), color, -1)
             cv2.putText(frame, class_name + "-" + str(track.track_id),(lpX1, lpY1-10),0, 0.75, (255,255,255),2)
